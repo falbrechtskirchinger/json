@@ -1,12 +1,15 @@
 #pragma once
 
 #include <array> // array
-#ifdef JSON_HAS_CPP_20
-    #include <compare> // strong_ordering
-#endif
 #include <cstddef> // size_t
 #include <cstdint> // uint8_t
 #include <type_traits> // underlying_type
+
+#include <nlohmann/detail/macro_scope.hpp>
+
+#ifdef JSON_HAS_CPP_20
+    #include <compare> // partial_ordering
+#endif
 
 namespace nlohmann
 {

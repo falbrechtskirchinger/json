@@ -44,9 +44,6 @@ SOFTWARE.
 #define NLOHMANN_JSON_VERSION_PATCH 5
 
 #include <algorithm> // all_of, find, for_each
-#ifdef JSON_HAS_CPP_20
-    #include <compare> // strong_ordering
-#endif
 #include <cstddef> // nullptr_t, ptrdiff_t, size_t
 #include <functional> // hash, less
 #include <initializer_list> // initializer_list
@@ -90,6 +87,9 @@ SOFTWARE.
 
 #if defined(JSON_HAS_CPP_17)
     #include <string_view>
+#endif
+#if defined(JSON_HAS_CPP_20)
+    #include <compare> // partial_ordering
 #endif
 
 /*!

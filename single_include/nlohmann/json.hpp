@@ -44,9 +44,6 @@ SOFTWARE.
 #define NLOHMANN_JSON_VERSION_PATCH 5
 
 #include <algorithm> // all_of, find, for_each
-#ifdef JSON_HAS_CPP_20
-    #include <compare> // strong_ordering
-#endif
 #include <cstddef> // nullptr_t, ptrdiff_t, size_t
 #include <functional> // hash, less
 #include <initializer_list> // initializer_list
@@ -93,115 +90,10 @@ SOFTWARE.
 
 
 #include <array> // array
-#ifdef JSON_HAS_CPP_20
-    #include <compare> // strong_ordering
-#endif
 #include <cstddef> // size_t
 #include <cstdint> // uint8_t
 #include <type_traits> // underlying_type
 
-namespace nlohmann
-{
-namespace detail
-{
-///////////////////////////
-// JSON type enumeration //
-///////////////////////////
-
-/*!
-@brief the JSON type enumeration
-
-This enumeration collects the different JSON types. It is internally used to
-distinguish the stored values, and the functions @ref basic_json::is_null(),
-@ref basic_json::is_object(), @ref basic_json::is_array(),
-@ref basic_json::is_string(), @ref basic_json::is_boolean(),
-@ref basic_json::is_number() (with @ref basic_json::is_number_integer(),
-@ref basic_json::is_number_unsigned(), and @ref basic_json::is_number_float()),
-@ref basic_json::is_discarded(), @ref basic_json::is_primitive(), and
-@ref basic_json::is_structured() rely on it.
-
-@note There are three enumeration entries (number_integer, number_unsigned, and
-number_float), because the library distinguishes these three types for numbers:
-@ref basic_json::number_unsigned_t is used for unsigned integers,
-@ref basic_json::number_integer_t is used for signed integers, and
-@ref basic_json::number_float_t is used for floating-point numbers or to
-approximate integers which do not fit in the limits of their respective type.
-
-@sa see @ref basic_json::basic_json(const value_t value_type) -- create a JSON
-value with the default value for a given type
-
-@since version 1.0.0
-*/
-enum class value_t : std::uint8_t
-{
-    null,             ///< null value
-    object,           ///< object (unordered set of name/value pairs)
-    array,            ///< array (ordered collection of values)
-    string,           ///< string value
-    boolean,          ///< boolean value
-    number_integer,   ///< number value (signed integer)
-    number_unsigned,  ///< number value (unsigned integer)
-    number_float,     ///< number value (floating-point)
-    binary,           ///< binary array (ordered collection of bytes)
-    discarded         ///< discarded by the parser callback function
-};
-
-/*!
-@brief comparison operator for JSON types
-
-Returns an ordering that is similar to Python:
-- order: null < boolean < number < object < array < string < binary
-- furthermore, each type is not smaller than itself
-- discarded values are not comparable
-- binary is represented as a b"" string in python and directly comparable to a
-  string; however, making a binary array directly comparable with a string would
-  be surprising behavior in a JSON file.
-
-@since version 1.0.0
-*/
-#ifdef JSON_HAS_CPP_20
-inline std::partial_ordering operator<=>(const value_t lhs, const value_t rhs) noexcept // *NOPAD*
-{
-    using enum_type = std::underlying_type<value_t>::type;
-    static constexpr std::array<enum_type, 9> order = {{
-            0 /* null */, 3 /* object */, 4 /* array */, 5 /* string */,
-            1 /* boolean */, 2 /* integer */, 2 /* unsigned */, 2 /* float */,
-            6 /* binary */
-        }
-    };
-
-    const auto l_index = static_cast<std::size_t>(lhs);
-    const auto r_index = static_cast<std::size_t>(rhs);
-    if (l_index < order.size() && r_index < order.size())
-    {
-        return order[l_index] <=> order[r_index]; // *NOPAD*
-    }
-
-    return std::partial_ordering::unordered;
-}
-#else
-inline bool operator<(const value_t lhs, const value_t rhs) noexcept
-{
-    using enum_type = std::underlying_type<value_t>::type;
-    static constexpr std::array<enum_type, 9> order = {{
-            0 /* null */, 3 /* object */, 4 /* array */, 5 /* string */,
-            1 /* boolean */, 2 /* integer */, 2 /* unsigned */, 2 /* float */,
-            6 /* binary */
-        }
-    };
-
-    const auto l_index = static_cast<std::size_t>(lhs);
-    const auto r_index = static_cast<std::size_t>(rhs);
-    return l_index < order.size() && r_index < order.size() && order[l_index] < order[r_index];
-}
-#endif
-}  // namespace detail
-}  // namespace nlohmann
-
-// #include <nlohmann/detail/string_escape.hpp>
-
-
-#include <string>
 // #include <nlohmann/detail/macro_scope.hpp>
 
 
@@ -2740,6 +2632,115 @@ using is_detected_convertible =
 #ifndef JSON_DIAGNOSTICS
     #define JSON_DIAGNOSTICS 0
 #endif
+
+
+#ifdef JSON_HAS_CPP_20
+    #include <compare> // partial_ordering
+#endif
+
+namespace nlohmann
+{
+namespace detail
+{
+///////////////////////////
+// JSON type enumeration //
+///////////////////////////
+
+/*!
+@brief the JSON type enumeration
+
+This enumeration collects the different JSON types. It is internally used to
+distinguish the stored values, and the functions @ref basic_json::is_null(),
+@ref basic_json::is_object(), @ref basic_json::is_array(),
+@ref basic_json::is_string(), @ref basic_json::is_boolean(),
+@ref basic_json::is_number() (with @ref basic_json::is_number_integer(),
+@ref basic_json::is_number_unsigned(), and @ref basic_json::is_number_float()),
+@ref basic_json::is_discarded(), @ref basic_json::is_primitive(), and
+@ref basic_json::is_structured() rely on it.
+
+@note There are three enumeration entries (number_integer, number_unsigned, and
+number_float), because the library distinguishes these three types for numbers:
+@ref basic_json::number_unsigned_t is used for unsigned integers,
+@ref basic_json::number_integer_t is used for signed integers, and
+@ref basic_json::number_float_t is used for floating-point numbers or to
+approximate integers which do not fit in the limits of their respective type.
+
+@sa see @ref basic_json::basic_json(const value_t value_type) -- create a JSON
+value with the default value for a given type
+
+@since version 1.0.0
+*/
+enum class value_t : std::uint8_t
+{
+    null,             ///< null value
+    object,           ///< object (unordered set of name/value pairs)
+    array,            ///< array (ordered collection of values)
+    string,           ///< string value
+    boolean,          ///< boolean value
+    number_integer,   ///< number value (signed integer)
+    number_unsigned,  ///< number value (unsigned integer)
+    number_float,     ///< number value (floating-point)
+    binary,           ///< binary array (ordered collection of bytes)
+    discarded         ///< discarded by the parser callback function
+};
+
+/*!
+@brief comparison operator for JSON types
+
+Returns an ordering that is similar to Python:
+- order: null < boolean < number < object < array < string < binary
+- furthermore, each type is not smaller than itself
+- discarded values are not comparable
+- binary is represented as a b"" string in python and directly comparable to a
+  string; however, making a binary array directly comparable with a string would
+  be surprising behavior in a JSON file.
+
+@since version 1.0.0
+*/
+#ifdef JSON_HAS_CPP_20
+inline std::partial_ordering operator<=>(const value_t lhs, const value_t rhs) noexcept // *NOPAD*
+{
+    using enum_type = std::underlying_type<value_t>::type;
+    static constexpr std::array<enum_type, 9> order = {{
+            0 /* null */, 3 /* object */, 4 /* array */, 5 /* string */,
+            1 /* boolean */, 2 /* integer */, 2 /* unsigned */, 2 /* float */,
+            6 /* binary */
+        }
+    };
+
+    const auto l_index = static_cast<std::size_t>(lhs);
+    const auto r_index = static_cast<std::size_t>(rhs);
+    if (l_index < order.size() && r_index < order.size())
+    {
+        return order[l_index] <=> order[r_index]; // *NOPAD*
+    }
+
+    return std::partial_ordering::unordered;
+}
+#else
+inline bool operator<(const value_t lhs, const value_t rhs) noexcept
+{
+    using enum_type = std::underlying_type<value_t>::type;
+    static constexpr std::array<enum_type, 9> order = {{
+            0 /* null */, 3 /* object */, 4 /* array */, 5 /* string */,
+            1 /* boolean */, 2 /* integer */, 2 /* unsigned */, 2 /* float */,
+            6 /* binary */
+        }
+    };
+
+    const auto l_index = static_cast<std::size_t>(lhs);
+    const auto r_index = static_cast<std::size_t>(rhs);
+    return l_index < order.size() && r_index < order.size() && order[l_index] < order[r_index];
+}
+#endif
+}  // namespace detail
+}  // namespace nlohmann
+
+// #include <nlohmann/detail/string_escape.hpp>
+
+
+#include <string>
+// #include <nlohmann/detail/macro_scope.hpp>
 
 
 namespace nlohmann
@@ -17296,6 +17297,9 @@ template <class Key, class T, class IgnoredLess = std::less<Key>,
 
 #if defined(JSON_HAS_CPP_17)
     #include <string_view>
+#endif
+#if defined(JSON_HAS_CPP_20)
+    #include <compare> // partial_ordering
 #endif
 
 /*!
