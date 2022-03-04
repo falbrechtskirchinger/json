@@ -32,6 +32,9 @@ SOFTWARE.
 #include <nlohmann/json.hpp>
 using nlohmann::json;
 
+// Force C++20 build
+// JSON_HAS_CPP_20
+
 namespace
 {
 // helper function to check std::less<json::value_t>
