@@ -97,6 +97,19 @@
     #define JSON_HAS_FILESYSTEM 0
 #endif
 
+#ifndef JSON_HAS_LIB_THREE_WAY_COMPARISON
+    #ifdef JSON_HAS_CPP_20
+        #if defined(__cpp_lib_three_way_comparison) && __cpp_lib_three_way_comparison >= 201907L
+            #define JSON_HAS_LIB_THREE_WAY_COMPARISON 1
+        #endif
+    #endif
+#endif
+
+#ifndef JSON_HAS_LIB_THREE_WAY_COMPARISON
+    #define JSON_HAS_LIB_THREE_WAY_COMPARISON 0
+#endif
+
+
 // disable documentation warnings on clang
 #if defined(__clang__)
     #pragma clang diagnostic push

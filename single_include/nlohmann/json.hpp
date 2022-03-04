@@ -2315,6 +2315,19 @@ using is_detected_convertible =
     #define JSON_HAS_FILESYSTEM 0
 #endif
 
+#ifndef JSON_HAS_LIB_THREE_WAY_COMPARISON
+    #ifdef JSON_HAS_CPP_20
+        #if defined(__cpp_lib_three_way_comparison) && __cpp_lib_three_way_comparison >= 201907L
+            #define JSON_HAS_LIB_THREE_WAY_COMPARISON 1
+        #endif
+    #endif
+#endif
+
+#ifndef JSON_HAS_LIB_THREE_WAY_COMPARISON
+    #define JSON_HAS_LIB_THREE_WAY_COMPARISON 0
+#endif
+
+
 // disable documentation warnings on clang
 #if defined(__clang__)
     #pragma clang diagnostic push
@@ -2697,7 +2710,7 @@ Returns an ordering that is similar to Python:
 
 @since version 1.0.0
 */
-#ifdef JSON_HAS_CPP_20
+#if JSON_HAS_LIB_THREE_WAY_COMPARISON
 inline std::partial_ordering operator<=>(const value_t lhs, const value_t rhs) noexcept // *NOPAD*
 {
     using enum_type = std::underlying_type<value_t>::type;
@@ -20599,7 +20612,7 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
 #endif
     }
 
-#ifdef JSON_HAS_CPP_20
+#if JSON_HAS_LIB_THREE_WAY_COMPARISON
 
     /// @brief three-way comparison
     /// @sa https://json.nlohmann.me/api/basic_json/operator_spaceship/
@@ -22070,6 +22083,7 @@ inline nlohmann::json::json_pointer operator "" _json_pointer(const char* s, std
 #undef JSON_HAS_CPP_20
 #undef JSON_HAS_FILESYSTEM
 #undef JSON_HAS_EXPERIMENTAL_FILESYSTEM
+#undef JSON_HAS_LIB_THREE_WAY_COMPARISON
 #undef NLOHMANN_BASIC_JSON_TPL_DECLARATION
 #undef NLOHMANN_BASIC_JSON_TPL
 #undef JSON_EXPLICIT

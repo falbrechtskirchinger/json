@@ -84,8 +84,8 @@ TEST_CASE("lexicographical comparison operators")
                     CAPTURE(i)
                     CAPTURE(j)
                     // check precomputed values
-#ifdef JSON_HAS_CPP_20
-                    CHECK((operator<=>(j_types[i], j_types[j]) < 0) == expected[i][j]);
+#if JSON_HAS_LIB_THREE_WAY_COMPARISON // JSON_HAS_CPP_20 (instruct CMake to build in C++20 mode)
+                    CHECK((operator<=> (j_types[i], j_types[j]) < 0) == expected[i][j]); // *NOPAD*
 #else
                     CHECK(operator<(j_types[i], j_types[j]) == expected[i][j]);
 #endif

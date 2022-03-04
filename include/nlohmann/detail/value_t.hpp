@@ -70,7 +70,7 @@ Returns an ordering that is similar to Python:
 
 @since version 1.0.0
 */
-#ifdef JSON_HAS_CPP_20
+#if JSON_HAS_LIB_THREE_WAY_COMPARISON
 inline std::partial_ordering operator<=>(const value_t lhs, const value_t rhs) noexcept // *NOPAD*
 {
     using enum_type = std::underlying_type<value_t>::type;

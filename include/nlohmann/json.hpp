@@ -3389,7 +3389,7 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
 #endif
     }
 
-#ifdef JSON_HAS_CPP_20
+#if JSON_HAS_LIB_THREE_WAY_COMPARISON
 
     /// @brief three-way comparison
     /// @sa https://json.nlohmann.me/api/basic_json/operator_spaceship/
