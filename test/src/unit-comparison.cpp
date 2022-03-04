@@ -32,8 +32,7 @@ SOFTWARE.
 #include <nlohmann/json.hpp>
 using nlohmann::json;
 
-// Trigger C++20 build
-// JSON_HAS_CPP_20
+#include "macros.hpp"
 
 namespace
 {
@@ -85,7 +84,11 @@ TEST_CASE("lexicographical comparison operators")
                     CAPTURE(i)
                     CAPTURE(j)
                     // check precomputed values
+#ifdef JSON_HAS_CPP_20
+                    CHECK((operator<=>(j_types[i], j_types[j]) < 0) == expected[i][j]);
+#else
                     CHECK(operator<(j_types[i], j_types[j]) == expected[i][j]);
+#endif
                     CHECK(f(j_types[i], j_types[j]) == expected[i][j]);
                 }
             }
