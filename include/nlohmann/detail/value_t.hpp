@@ -1,9 +1,12 @@
 #pragma once
 
 #include <array> // array
+#ifdef JSON_HAS_CPP_20
+    #include <compare> // strong_ordering
+#endif
 #include <cstddef> // size_t
 #include <cstdint> // uint8_t
-#include <string> // string
+#include <type_traits> // underlying_type
 
 namespace nlohmann
 {
@@ -64,9 +67,31 @@ Returns an ordering that is similar to Python:
 
 @since version 1.0.0
 */
+#ifdef JSON_HAS_CPP_20
+inline std::partial_ordering operator<=>(const value_t lhs, const value_t rhs) noexcept // *NOPAD*
+{
+    using enum_type = std::underlying_type<value_t>::type;
+    static constexpr std::array<enum_type, 9> order = {{
+            0 /* null */, 3 /* object */, 4 /* array */, 5 /* string */,
+            1 /* boolean */, 2 /* integer */, 2 /* unsigned */, 2 /* float */,
+            6 /* binary */
+        }
+    };
+
+    const auto l_index = static_cast<std::size_t>(lhs);
+    const auto r_index = static_cast<std::size_t>(rhs);
+    if (l_index < order.size() && r_index < order.size())
+    {
+        return order[l_index] <=> order[r_index]; // *NOPAD*
+    }
+
+    return std::partial_ordering::unordered;
+}
+#else
 inline bool operator<(const value_t lhs, const value_t rhs) noexcept
 {
-    static constexpr std::array<std::uint8_t, 9> order = {{
+    using enum_type = std::underlying_type<value_t>::type;
+    static constexpr std::array<enum_type, 9> order = {{
             0 /* null */, 3 /* object */, 4 /* array */, 5 /* string */,
             1 /* boolean */, 2 /* integer */, 2 /* unsigned */, 2 /* float */,
             6 /* binary */
@@ -77,5 +102,6 @@ inline bool operator<(const value_t lhs, const value_t rhs) noexcept
     const auto r_index = static_cast<std::size_t>(rhs);
     return l_index < order.size() && r_index < order.size() && order[l_index] < order[r_index];
 }
+#endif
 }  // namespace detail
 }  // namespace nlohmann

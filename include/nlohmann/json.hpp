@@ -44,6 +44,9 @@ SOFTWARE.
 #define NLOHMANN_JSON_VERSION_PATCH 5
 
 #include <algorithm> // all_of, find, for_each
+#ifdef JSON_HAS_CPP_20
+    #include <compare> // strong_ordering
+#endif
 #include <cstddef> // nullptr_t, ptrdiff_t, size_t
 #include <functional> // hash, less
 #include <initializer_list> // initializer_list
@@ -3386,6 +3389,90 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
 #endif
     }
 
+#ifdef JSON_HAS_CPP_20
+
+    /// @brief three-way comparison
+    /// @sa https://json.nlohmann.me/api/basic_json/operator_spaceship/
+    friend std::partial_ordering operator<=>(const_reference lhs, const_reference rhs) noexcept // *NOPAD*
+    {
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wfloat-equal"
+#endif
+        const auto lhs_type = lhs.type();
+        const auto rhs_type = rhs.type();
+
+        if (lhs_type == rhs_type)
+        {
+            switch (lhs_type)
+            {
+                case value_t::array:
+                    return *lhs.m_value.array <=> *rhs.m_value.array; // *NOPAD*
+
+                case value_t::object:
+                    return *lhs.m_value.object <=> *rhs.m_value.object; // *NOPAD*
+
+                case value_t::null:
+                    return std::partial_ordering::equivalent;
+
+                case value_t::string:
+                    return *lhs.m_value.string <=> *rhs.m_value.string; // *NOPAD*
+
+                case value_t::boolean:
+                    return lhs.m_value.boolean <=> rhs.m_value.boolean; // *NOPAD*
+
+                case value_t::number_integer:
+                    return lhs.m_value.number_integer <=> rhs.m_value.number_integer; // *NOPAD*
+
+                case value_t::number_unsigned:
+                    return lhs.m_value.number_unsigned <=> rhs.m_value.number_unsigned; // *NOPAD*
+
+                case value_t::number_float:
+                    return lhs.m_value.number_float <=> rhs.m_value.number_float; // *NOPAD*
+
+                case value_t::binary:
+                    return *lhs.m_value.binary <=> *rhs.m_value.binary; // *NOPAD*
+
+                case value_t::discarded:
+                default:
+                    return std::partial_ordering::unordered;
+            }
+        }
+        else if (lhs_type == value_t::number_integer && rhs_type == value_t::number_float)
+        {
+            return static_cast<number_float_t>(lhs.m_value.number_integer) <=> rhs.m_value.number_float; // *NOPAD*
+        }
+        else if (lhs_type == value_t::number_float && rhs_type == value_t::number_integer)
+        {
+            return lhs.m_value.number_float <=> static_cast<number_float_t>(rhs.m_value.number_integer); // *NOPAD*
+        }
+        else if (lhs_type == value_t::number_unsigned && rhs_type == value_t::number_float)
+        {
+            return static_cast<number_float_t>(lhs.m_value.number_unsigned) <=> rhs.m_value.number_float; // *NOPAD*
+        }
+        else if (lhs_type == value_t::number_float && rhs_type == value_t::number_unsigned)
+        {
+            return lhs.m_value.number_float <=> static_cast<number_float_t>(rhs.m_value.number_unsigned); // *NOPAD*
+        }
+        else if (lhs_type == value_t::number_unsigned && rhs_type == value_t::number_integer)
+        {
+            return static_cast<number_integer_t>(lhs.m_value.number_unsigned) <=> rhs.m_value.number_integer; // *NOPAD*
+        }
+        else if (lhs_type == value_t::number_integer && rhs_type == value_t::number_unsigned)
+        {
+            return lhs.m_value.number_integer <=> static_cast<number_integer_t>(rhs.m_value.number_unsigned); // *NOPAD*
+        }
+
+        // We only reach this line if we cannot compare values. In that case,
+        // we compare types.
+        return lhs_type <=> rhs_type; // *NOPAD*
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+    }
+
+#else
+
     /// @brief comparison: equal
     /// @sa https://json.nlohmann.me/api/basic_json/operator_eq/
     template<typename ScalarType, typename std::enable_if<
@@ -3597,6 +3684,7 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
     {
         return basic_json(lhs) >= rhs;
     }
+#endif
 
     /// @}
 
