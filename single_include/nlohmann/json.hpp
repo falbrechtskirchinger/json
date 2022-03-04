@@ -22021,7 +22021,7 @@ struct less< ::nlohmann::detail::value_t> // do not remove the space after '<', 
     bool operator()(nlohmann::detail::value_t lhs,
                     nlohmann::detail::value_t rhs) const noexcept
     {
-#ifdef JSON_HAS_CPP_20
+#if JSON_HAS_LIB_THREE_WAY_COMPARISON
         return (nlohmann::detail::operator<=>(lhs, rhs) < 0); // *NOPAD*
 #else
         return nlohmann::detail::operator<(lhs, rhs);
