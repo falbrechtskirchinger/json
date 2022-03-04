@@ -52,10 +52,12 @@ endif()
 # one executable for each unit test file
 #############################################################################
 
-# check if compiler supports C++17
+# check if compiler supports C++17/C++20
 foreach(feature ${CMAKE_CXX_COMPILE_FEATURES})
     if (${feature} STREQUAL cxx_std_17)
         set(compiler_supports_cpp_17 TRUE)
+    elseif (${feature} STREQUAL cxx_std_20)
+        set(compiler_supports_cpp_20 TRUE)
     endif()
 endforeach()
 # Clang only supports C++17 starting from Clang 5.0
@@ -67,96 +69,110 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "MSVC" AND CMAKE_CXX_COMPILER_VERSION VER
     unset(compiler_supports_cpp_17)
 endif()
 
-file(GLOB files src/unit-*.cpp)
+# Interface library for C++17 overrides
+add_library(cpp17_overrides INTERFACE)
 
-foreach(file ${files})
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8.0 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0 AND NOT MINGW)
+    # fix for https://gcc.gnu.org/bugzilla/show_bug.cgi?id=90050
+    target_link_libraries(cpp17_overrides PRIVATE stdc++fs)
+endif()
+
+# Interface libraries for test-specific overrides
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    # avoid stack overflow, see https://github.com/nlohmann/json/issues/2955
+    add_library(test-cbor_overrides INTERFACE)
+    target_link_options(test-cbor_overrides INTERFACE "/STACK:4000000")
+    add_library(test-msgpack_overrides INTERFACE)
+    target_link_options(test-msgpack_overrides INTERFACE "/STACK:4000000")
+    add_library(test-ubjson_overrides INTERFACE)
+    target_link_options(test-ubjson_overrides INTERFACE "/STACK:4000000")
+endif()
+
+# disable exceptions for test-disabled_exceptions
+add_library(test-disabled_exceptions_overrides INTERFACE)
+target_compile_definitions(test-disabled_exceptions_overrides INTERFACE JSON_NOEXCEPTION)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(test-disabled_exceptions_overrides INTERFACE -fno-exceptions)
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    # disabled due to https://github.com/nlohmann/json/discussions/2824
+    #target_compile_options(test-disabled_exceptions_overrides INTERFACE /EH)
+    #target_compile_definitions(test-disabled_exceptions_overrides INTERFACE _HAS_EXCEPTIONS=0)
+endif()
+
+function(add_testcases file)
+    cmake_parse_arguments(add_testcases "" "CXX_STANDARD" "CXX_STANDARDS" ${ARGN})
+
     get_filename_component(file_basename ${file} NAME_WE)
     string(REGEX REPLACE "unit-([^$]+)" "test-\\1" testcase ${file_basename})
 
-    add_executable(${testcase} $<TARGET_OBJECTS:doctest_main> ${file})
-    target_compile_definitions(${testcase} PRIVATE DOCTEST_CONFIG_SUPER_FAST_ASSERTS)
-    target_compile_options(${testcase} PRIVATE
-        $<$<CXX_COMPILER_ID:MSVC>:/EHsc;$<$<CONFIG:Release>:/Od>>
-        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wno-deprecated;-Wno-float-equal>
-        $<$<CXX_COMPILER_ID:GNU>:-Wno-deprecated-declarations>
-    )
-    target_include_directories(${testcase} PRIVATE ${CMAKE_BINARY_DIR}/include thirdparty/doctest thirdparty/fifo_map)
-    target_link_libraries(${testcase} PRIVATE ${NLOHMANN_JSON_TARGET_NAME})
+    if(add_testcases_CXX_STANDARD)
+        if(${add_testcases_CXX_STANDARD} STREQUAL "default")
+            set(testcase_exec ${testcase})
+        else()
+            if (compiler_supports_cpp_${add_testcases_CXX_STANDARD})
+                file(READ ${file} file_content)
+                string(FIND "${file_content}" JSON_HAS_CPP_${add_testcases_CXX_STANDARD} has_cpp_found)
+                if(NOT ${has_cpp_found} EQUAL -1)
+                    set(testcase_exec ${testcase}_cpp${add_testcases_CXX_STANDARD})
+                endif()
+            endif()
+        endif()
 
-    # add a copy with C++17 compilation
-    if (compiler_supports_cpp_17)
-        file(READ ${file} FILE_CONTENT)
-        string(FIND "${FILE_CONTENT}" "JSON_HAS_CPP_17" CPP_17_FOUND)
-        if(NOT ${CPP_17_FOUND} EQUAL -1)
-            add_executable(${testcase}_cpp17 $<TARGET_OBJECTS:doctest_main> ${file})
-            target_compile_definitions(${testcase}_cpp17 PRIVATE DOCTEST_CONFIG_SUPER_FAST_ASSERTS)
-            target_compile_options(${testcase}_cpp17 PRIVATE
+        if(testcase_exec)
+            add_executable(${testcase_exec} $<TARGET_OBJECTS:doctest_main> ${file})
+            target_compile_definitions(${testcase_exec} PRIVATE DOCTEST_CONFIG_SUPER_FAST_ASSERTS)
+            target_compile_options(${testcase_exec} PRIVATE
                 $<$<CXX_COMPILER_ID:MSVC>:/EHsc;$<$<CONFIG:Release>:/Od>>
                 $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wno-deprecated;-Wno-float-equal>
                 $<$<CXX_COMPILER_ID:GNU>:-Wno-deprecated-declarations>
             )
-            target_include_directories(${testcase}_cpp17 PRIVATE ${CMAKE_BINARY_DIR}/include thirdparty/doctest thirdparty/fifo_map)
-            target_link_libraries(${testcase}_cpp17 PRIVATE ${NLOHMANN_JSON_TARGET_NAME})
-            target_compile_features(${testcase}_cpp17 PRIVATE cxx_std_17)
+            target_include_directories(${testcase_exec} PRIVATE ${CMAKE_BINARY_DIR}/include thirdparty/doctest thirdparty/fifo_map)
+            target_link_libraries(${testcase_exec} PRIVATE ${NLOHMANN_JSON_TARGET_NAME})
 
-            if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8.0 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0 AND NOT MINGW)
-                # fix for https://gcc.gnu.org/bugzilla/show_bug.cgi?id=90050
-                target_link_libraries(${testcase}_cpp17 PRIVATE stdc++fs)
+            if(NOT ${add_testcases_CXX_STANDARD} STREQUAL "default")
+                target_compile_features(${testcase_exec} PRIVATE cxx_std_${add_testcases_CXX_STANDARD})
+            endif()
+
+            if(cpp${add_testcases_CXX_STANDARD}_overrides)
+                target_link_libraries(${testcase_exec} PRIVATE cpp${add_testcases_CXX_STANDARD}_overrides)
+            endif()
+
+            if(${testcase}_overrides)
+                target_link_libraries(${testcase_exec} PRIVATE ${testcase}_overrides)
             endif()
 
             if (JSON_FastTests)
-                add_test(NAME "${testcase}_cpp17"
-                    COMMAND ${testcase}_cpp17 ${DOCTEST_TEST_FILTER}
+                add_test(NAME ${testcase_exec}
+                    COMMAND ${testcase_exec} ${DOCTEST_TEST_FILTER}
                     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
                 )
             else()
-                add_test(NAME "${testcase}_cpp17"
-                    COMMAND ${testcase}_cpp17 ${DOCTEST_TEST_FILTER} --no-skip
+                add_test(NAME ${testcase_exec}
+                    COMMAND ${testcase_exec} ${DOCTEST_TEST_FILTER} --no-skip
                     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
                 )
             endif()
-            set_tests_properties("${testcase}_cpp17" PROPERTIES LABELS "all" FIXTURES_REQUIRED TEST_DATA)
+            set_tests_properties(${testcase_exec} PROPERTIES LABELS "all" FIXTURES_REQUIRED TEST_DATA)
+
+            if(JSON_Valgrind)
+                add_test(NAME ${testcase_exec}_valgrind
+                    COMMAND ${memcheck_command} $<TARGET_FILE:${testcase_exec}> ${DOCTEST_TEST_FILTER}
+                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                )
+                set_tests_properties(${testcase_exec}_valgrind PROPERTIES LABELS "valgrind" FIXTURES_REQUIRED TEST_DATA)
+            endif()
         endif()
+    elseif(add_testcases_CXX_STANDARDS)
+        foreach(cxx_standard ${add_testcases_CXX_STANDARDS})
+            add_testcases(${file} CXX_STANDARD ${cxx_standard})
+        endforeach()
     endif()
+endfunction()
 
-    if (JSON_FastTests)
-        add_test(NAME "${testcase}"
-            COMMAND ${testcase} ${DOCTEST_TEST_FILTER}
-            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        )
-    else()
-        add_test(NAME "${testcase}"
-            COMMAND ${testcase} ${DOCTEST_TEST_FILTER} --no-skip
-            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        )
-    endif()
-    set_tests_properties("${testcase}" PROPERTIES LABELS "all" FIXTURES_REQUIRED TEST_DATA)
-
-    if(JSON_Valgrind)
-        add_test(NAME "${testcase}_valgrind"
-            COMMAND ${memcheck_command} ${CMAKE_CURRENT_BINARY_DIR}/${testcase} ${DOCTEST_TEST_FILTER}
-            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        )
-        set_tests_properties("${testcase}_valgrind" PROPERTIES LABELS "valgrind" FIXTURES_REQUIRED TEST_DATA)
-    endif()
+file(GLOB files src/unit-*.cpp)
+foreach(file ${files})
+    add_testcases(${file} CXX_STANDARDS default 17 20)
 endforeach()
-
-# disable exceptions for test-disabled_exceptions
-target_compile_definitions(test-disabled_exceptions PUBLIC JSON_NOEXCEPTION)
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(test-disabled_exceptions PUBLIC -fno-exceptions)
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    # disabled due to https://github.com/nlohmann/json/discussions/2824
-    #target_compile_options(test-disabled_exceptions PUBLIC /EH)
-    #target_compile_definitions(test-disabled_exceptions PUBLIC _HAS_EXCEPTIONS=0)
-endif()
-
-# avoid stack overflow, see https://github.com/nlohmann/json/issues/2955
-if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    set_property(TARGET test-cbor APPEND_STRING PROPERTY LINK_FLAGS " /STACK:4000000")
-    set_property(TARGET test-msgpack APPEND_STRING PROPERTY LINK_FLAGS " /STACK:4000000")
-    set_property(TARGET test-ubjson APPEND_STRING PROPERTY LINK_FLAGS " /STACK:4000000")
-endif()
 
 #############################################################################
 # Test the generated build configs
