@@ -271,7 +271,12 @@ std::string* sax_no_exception::error_string = nullptr;
 
 template<class T>
 class my_allocator : public std::allocator<T>
-{};
+{
+  public:
+    //template<typename U>
+    //my_allocator(const my_allocator<U> &) noexcept {}
+    using std::allocator<T>::allocator;
+};
 
 /////////////////////////////////////////////////////////////////////
 // for #3077
