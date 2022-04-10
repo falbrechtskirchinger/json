@@ -32,6 +32,46 @@ SOFTWARE.
 #include <nlohmann/json.hpp>
 using nlohmann::json;
 
+#if JSON_HAS_THREE_WAY_COMPARISON
+    #include <compare>
+#endif
+
+// build this testcase in C++20-mode (CMake code detects macro use)
+// JSON_HAS_CPP_20
+
+#if JSON_HAS_THREE_WAY_COMPARISON
+// this can be replaced with the doctest stl extension header in version 2.5
+namespace doctest
+{
+template<> struct StringMaker<std::partial_ordering>
+{
+    static String convert(const std::partial_ordering& order)
+    {
+        if (order == std::partial_ordering::less)
+        {
+            return "std::partial_ordering::less";
+        }
+        else if (order == std::partial_ordering::equivalent)
+        {
+            return "std::partial_ordering::equivalent";
+        }
+        else if (order == std::partial_ordering::greater)
+        {
+            return "std::partial_ordering::greater";
+        }
+        else if (order == std::partial_ordering::unordered)
+        {
+            return "std::partial_ordering::unordered";
+        }
+        else
+        {
+            return "{?}";
+        }
+    }
+};
+}
+#endif
+
 namespace
 {
 // helper function to check std::less<json::value_t>
@@ -82,11 +122,46 @@ TEST_CASE("lexicographical comparison operators")
                     CAPTURE(i)
                     CAPTURE(j)
                     // check precomputed values
+#if JSON_HAS_THREE_WAY_COMPARISON
+                    CHECK((j_types[i] < j_types[j]) == expected[i][j]);
+#else
                     CHECK(operator<(j_types[i], j_types[j]) == expected[i][j]);
+#endif
                     CHECK(f(j_types[i], j_types[j]) == expected[i][j]);
                 }
             }
         }
+#if JSON_HAS_THREE_WAY_COMPARISON
+        SECTION("comparison: 3-way")
+        {
+            constexpr auto lt = std::partial_ordering::less;
+            constexpr auto gt = std::partial_ordering::greater;
+            constexpr auto eq = std::partial_ordering::equivalent;
+            std::vector<std::vector<std::partial_ordering>> expected =
+            {
+                {eq, lt, lt, lt, lt, lt, lt, lt, lt},
+                {gt, eq, lt, lt, lt, lt, lt, lt, lt},
+                {gt, gt, eq, eq, eq, lt, lt, lt, lt},
+                {gt, gt, eq, eq, eq, lt, lt, lt, lt},
+                {gt, gt, eq, eq, eq, lt, lt, lt, lt},
+                {gt, gt, gt, gt, gt, eq, lt, lt, lt},
+                {gt, gt, gt, gt, gt, gt, eq, lt, lt},
+                {gt, gt, gt, gt, gt, gt, gt, eq, lt},
+                {gt, gt, gt, gt, gt, gt, gt, gt, eq}
+            };
+
+            for (size_t i = 0; i < j_types.size(); ++i)
+            {
+                for (size_t j = 0; j < j_types.size(); ++j)
+                {
+                    CAPTURE(i)
+                    CAPTURE(j)
+                    // check precomputed values
+                    CHECK((j_types[i] <=> j_types[j]) == expected[i][j]); // *NOPAD*
+                }
+            }
+        }
+#endif
     }
 
     SECTION("values")
@@ -205,14 +280,6 @@ TEST_CASE("lexicographical comparison operators")
             {
                 for (size_t j = 0; j < j_values.size(); ++j)
                 {
-                    // Skip comparing indicies 12 and 13, and 13 and 12 in C++20 pending fix
-                    // See issue #3207
-#if defined(JSON_HAS_CPP_20) || JSON_HAS_THREE_WAY_COMPARISON
-                    if ((i == 12 && j == 13) || (i == 13 && j == 12))
-                    {
-                        continue;
-                    }
-#endif
                     CAPTURE(i)
                     CAPTURE(j)
                     CAPTURE(j_values[i])
@@ -274,5 +341,45 @@ TEST_CASE("lexicographical comparison operators")
                 }
             }
         }
+
+#if JSON_HAS_THREE_WAY_COMPARISON
+        SECTION("comparison: 3-way")
+        {
+            constexpr auto lt = std::partial_ordering::less;
+            constexpr auto gt = std::partial_ordering::greater;
+            constexpr auto eq = std::partial_ordering::equivalent;
+            std::vector<std::vector<std::partial_ordering>> expected =
+            {
+                {eq, eq, lt, lt, lt, lt, lt, lt, lt, lt, lt, lt, lt, lt, lt, lt, lt, lt},
+                {eq, eq, lt, lt, lt, lt, lt, lt, lt, lt, lt, lt, lt, lt, lt, lt, lt, lt},
+                {gt, gt, eq, lt, lt, lt, lt, lt, lt, lt, gt, gt, lt, lt, lt, lt, lt, lt},
+                {gt, gt, gt, eq, gt, gt, gt, gt, lt, lt, gt, gt, lt, lt, lt, lt, lt, lt},
+                {gt, gt, gt, lt, eq, lt, gt, lt, lt, lt, gt, gt, lt, lt, lt, lt, lt, lt},
+                {gt, gt, gt, lt, gt, eq, gt, lt, lt, lt, gt, gt, lt, lt, lt, lt, lt, lt},
+                {gt, gt, gt, lt, lt, lt, eq, lt, lt, lt, gt, gt, lt, lt, lt, lt, lt, lt},
+                {gt, gt, gt, lt, gt, gt, gt, eq, lt, lt, gt, gt, lt, lt, lt, lt, lt, lt},
+                {gt, gt, gt, gt, gt, gt, gt, gt, eq, gt, gt, gt, gt, gt, gt, gt, lt, lt},
+                {gt, gt, gt, gt, gt, gt, gt, gt, lt, eq, gt, gt, gt, gt, gt, gt, lt, lt},
+                {gt, gt, lt, lt, lt, lt, lt, lt, lt, lt, eq, gt, lt, lt, lt, lt, lt, lt},
+                {gt, gt, lt, lt, lt, lt, lt, lt, lt, lt, lt, eq, lt, lt, lt, lt, lt, lt},
+                {gt, gt, gt, gt, gt, gt, gt, gt, lt, lt, gt, gt, eq, lt, gt, gt, lt, lt},
+                {gt, gt, gt, gt, gt, gt, gt, gt, lt, lt, gt, gt, gt, eq, gt, gt, lt, lt},
+                {gt, gt, gt, gt, gt, gt, gt, gt, lt, lt, gt, gt, lt, lt, eq, gt, lt, lt},
+                {gt, gt, gt, gt, gt, gt, gt, gt, lt, lt, gt, gt, lt, lt, lt, eq, lt, lt},
+                {gt, gt, gt, gt, gt, gt, gt, gt, gt, gt, gt, gt, gt, gt, gt, gt, eq, lt},
+                {gt, gt, gt, gt, gt, gt, gt, gt, gt, gt, gt, gt, gt, gt, gt, gt, gt, eq}
+            };
+
+            for (size_t i = 0; i < j_values.size(); ++i)
+            {
+                for (size_t j = 0; j < j_values.size(); ++j)
+                {
+                    CAPTURE(i)
+                    CAPTURE(j)
+                    CHECK((j_values[i] <=> j_values[j]) == expected[i][j]); // *NOPAD*
+                }
+            }
+        }
+#endif
     }
 }
