@@ -218,11 +218,11 @@ TEST_CASE("lexicographical comparison operators")
 
             // comparison with discarded elements
             json j_discarded(json::value_t::discarded);
+            CHECK( (j_discarded == j_discarded) == false);
             for (const auto& v : j_values)
             {
                 CHECK( (v == j_discarded) == false);
                 CHECK( (j_discarded == v) == false);
-                CHECK( (j_discarded == j_discarded) == false);
             }
 
             // compare with null pointer
