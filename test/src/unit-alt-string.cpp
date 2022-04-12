@@ -328,15 +328,11 @@ TEST_CASE("alternative string type")
 
     SECTION("JSON pointer")
     {
-        // conversion from json to alt_json fails to compile (see #3425);
-        // attempted fix(*) produces: [[['b','a','r'],['b','a','z']]] (with each char being an integer)
-        // (*) disable implicit conversion for json_refs of any basic_json type
-        // alt_json j = R"(
-        // {
-        //     "foo": ["bar", "baz"]
-        // }
-        // )"_json;
-        auto j = alt_json::parse(R"({"foo": ["bar", "baz"]})");
+        alt_json j = R"(
+        {
+            "foo": ["bar", "baz"]
+        }
+        )"_json;
 
         CHECK(j.at(alt_json::json_pointer("/foo/0")) == j["foo"][0]);
         CHECK(j.at(alt_json::json_pointer("/foo/1")) == j["foo"][1]);
