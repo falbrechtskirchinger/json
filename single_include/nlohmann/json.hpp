@@ -64,6 +64,7 @@ SOFTWARE.
 #include <string> // string, stoi, to_string
 #include <utility> // declval, forward, move, pair, swap
 #include <vector> // vector
+#include <sstream>
 
 // #include <nlohmann/adl_serializer.hpp>
 
@@ -22499,24 +22500,59 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
                : detail::binary_reader<basic_json, decltype(ia), SAX>(std::move(ia), format).sax_parse(format, sax, strict);
     }
 #ifndef JSON_NO_IO
-    /// @brief deserialize from stream
+    /// @brief deserialize from istringstream
     /// @sa https://json.nlohmann.me/api/basic_json/operator_gtgt/
     /// @deprecated This stream operator is deprecated since 3.0.0 and will be removed in
     ///             version 4.0.0 of the library. Please use
-    ///             operator>>(std::istream&, basic_json&) instead; that is,
+    ///             operator>>(std::istringstream&, basic_json&) instead; that is,
     ///             replace calls like `j << i;` with `i >> j;`.
-    JSON_HEDLEY_DEPRECATED_FOR(3.0.0, operator>>(std::istream&, basic_json&))
-    friend std::istream& operator<<(basic_json& j, std::istream& i)
+    JSON_HEDLEY_DEPRECATED_FOR(3.0.0, operator>>(std::istringstream&, basic_json&))
+    friend std::istringstream& operator<<(basic_json& j, std::istringstream& i)
     {
         return operator>>(i, j);
     }
 
-    /// @brief deserialize from stream
+    /// @brief deserialize from stringstream
+    /// @sa https://json.nlohmann.me/api/basic_json/operator_gtgt/
+    /// @deprecated This stream operator is deprecated since 3.0.0 and will be removed in
+    ///             version 4.0.0 of the library. Please use
+    ///             operator>>(std::stringstream&, basic_json&) instead; that is,
+    ///             replace calls like `j << i;` with `i >> j;`.
+    JSON_HEDLEY_DEPRECATED_FOR(3.0.0, operator>>(std::stringstream&, basic_json&))
+    friend std::stringstream& operator<<(basic_json& j, std::stringstream& i)
+    {
+        return operator>>(i, j);
+    }
+
+    /// @brief deserialize from istringstream
+    /// @sa https://json.nlohmann.me/api/basic_json/operator_gtgt/
+    friend std::istringstream& operator>>(std::istringstream& i, basic_json& j)
+    {
+
+        std::istream& is = i;
+
+        parser(detail::input_adapter(is)).parse(false, j);
+
+        return i;
+    }
+
+    /// @brief deserialize from stringstream
+    /// @sa https://json.nlohmann.me/api/basic_json/operator_gtgt/
+    friend std::stringstream& operator>>(std::stringstream& i, basic_json& j)
+    {
+
+        std::iostream& is = i;
+
+        parser(detail::input_adapter(is)).parse(false, j);
+
+        return i;
+    }
+
+
+    /// @brief deserialize from istream
     /// @sa https://json.nlohmann.me/api/basic_json/operator_gtgt/
     friend std::istream& operator>>(std::istream& i, basic_json& j)
     {
-
-        parser(detail::input_adapter(i)).parse(false, j);
 
         auto p = i.peek();
 
@@ -22529,10 +22565,14 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
         if (p == std::istream::traits_type::eof())
         {
             i.get();
+            return i;
         }
+
+        parser(detail::input_adapter(i)).parse(false, j);
 
         return i;
     }
+
 #endif  // JSON_NO_IO
     /// @}
 
