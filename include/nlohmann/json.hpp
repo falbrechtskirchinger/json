@@ -4113,7 +4113,22 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
     /// @sa https://json.nlohmann.me/api/basic_json/operator_gtgt/
     friend std::istream& operator>>(std::istream& i, basic_json& j)
     {
+
         parser(detail::input_adapter(i)).parse(false, j);
+
+        auto p = i.peek();
+
+        while (p == '\n' || p == '\r')
+        {
+            i.get();
+            p = i.peek();
+        }
+
+        if (p == std::istream::traits_type::eof())
+        {
+            i.get();
+        }
+
         return i;
     }
 #endif  // JSON_NO_IO
