@@ -27,6 +27,13 @@ using nlohmann::json;
     #include <ranges>
 #endif
 
+
+#if !defined(__clang__) || (defined(__clang__) && __clang_major__ == 3 && __clang_minor__ > 5)
+    #define APPLY_NOEXCEPT noexcept
+#else
+    #define APPLY_NOEXCEPT
+#endif
+
 // MSSTL defines as_const in the global namespace :facepalm:
 template<typename... Args>
 static auto const_(Args&& ... args) -> decltype(nlohmann::detail::as_const(std::forward<Args>(args)...))
