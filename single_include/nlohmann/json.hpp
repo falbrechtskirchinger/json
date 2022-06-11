@@ -64,7 +64,6 @@ SOFTWARE.
 #include <string> // string, stoi, to_string
 #include <utility> // declval, forward, move, pair, swap
 #include <vector> // vector
-#include <sstream>
 
 // #include <nlohmann/adl_serializer.hpp>
 
@@ -5835,7 +5834,6 @@ class input_stream_adapter
 };
 #endif  // JSON_NO_IO
 
-
 // General-purpose iterator-based adapter. It might not be as fast as
 // theoretically possible for some containers, but it is extremely versatile.
 template<typename IteratorType>
@@ -5845,12 +5843,11 @@ class iterator_input_adapter
     using char_type = typename std::iterator_traits<IteratorType>::value_type;
 
     iterator_input_adapter(IteratorType first, IteratorType last)
-        : current(std::move(first)), end(std::move(last)), current_has_been_consumed(false)
+        : current(std::move(first)), end(std::move(last))
     {}
 
     typename std::char_traits<char_type>::int_type get_character()
     {
-
         if (JSON_HEDLEY_LIKELY(current_has_been_consumed))
         {
             std::advance(current, 1);
@@ -5861,18 +5858,15 @@ class iterator_input_adapter
             current_has_been_consumed = true;
             return std::char_traits<char_type>::to_int_type(*current);
         }
-        else
-        {
-            current_has_been_consumed = false;
-            return std::char_traits<char_type>::eof();
-        }
 
+        current_has_been_consumed = false;
+        return std::char_traits<char_type>::eof();
     }
 
   private:
     mutable IteratorType current;
     const IteratorType end;
-    mutable bool current_has_been_consumed;
+    mutable bool current_has_been_consumed = false;
 
     template<typename BaseInputAdapter, size_t T>
     friend struct wide_string_input_helper;
@@ -5888,7 +5882,6 @@ class iterator_input_adapter
         return current == end;
     }
 };
-
 
 template<typename BaseInputAdapter, size_t T>
 struct wide_string_input_helper;
@@ -22528,7 +22521,6 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
     /// @sa https://json.nlohmann.me/api/basic_json/operator_gtgt/
     friend std::istringstream& operator>>(std::istringstream& i, basic_json& j)
     {
-
         std::istream& is = i;
 
         parser(detail::input_adapter(is)).parse(false, j);
@@ -22540,7 +22532,6 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
     /// @sa https://json.nlohmann.me/api/basic_json/operator_gtgt/
     friend std::stringstream& operator>>(std::stringstream& i, basic_json& j)
     {
-
         std::iostream& is = i;
 
         parser(detail::input_adapter(is)).parse(false, j);
@@ -22548,12 +22539,10 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
         return i;
     }
 
-
     /// @brief deserialize from istream
     /// @sa https://json.nlohmann.me/api/basic_json/operator_gtgt/
     friend std::istream& operator>>(std::istream& i, basic_json& j)
     {
-
         auto p = i.peek();
 
         while (p == '\n' || p == '\r')
@@ -22608,7 +22597,6 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
                 return "number";
         }
     }
-
 
   JSON_PRIVATE_UNLESS_TESTED:
     //////////////////////

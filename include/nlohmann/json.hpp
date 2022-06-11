@@ -64,7 +64,6 @@ SOFTWARE.
 #include <string> // string, stoi, to_string
 #include <utility> // declval, forward, move, pair, swap
 #include <vector> // vector
-#include <sstream>
 
 #include <nlohmann/adl_serializer.hpp>
 #include <nlohmann/byte_container_with_subtype.hpp>
@@ -4126,7 +4125,6 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
     /// @sa https://json.nlohmann.me/api/basic_json/operator_gtgt/
     friend std::istringstream& operator>>(std::istringstream& i, basic_json& j)
     {
-
         std::istream& is = i;
 
         parser(detail::input_adapter(is)).parse(false, j);
@@ -4138,7 +4136,6 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
     /// @sa https://json.nlohmann.me/api/basic_json/operator_gtgt/
     friend std::stringstream& operator>>(std::stringstream& i, basic_json& j)
     {
-
         std::iostream& is = i;
 
         parser(detail::input_adapter(is)).parse(false, j);
@@ -4146,12 +4143,10 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
         return i;
     }
 
-
     /// @brief deserialize from istream
     /// @sa https://json.nlohmann.me/api/basic_json/operator_gtgt/
     friend std::istream& operator>>(std::istream& i, basic_json& j)
     {
-
         auto p = i.peek();
 
         while (p == '\n' || p == '\r')
@@ -4206,7 +4201,6 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
                 return "number";
         }
     }
-
 
   JSON_PRIVATE_UNLESS_TESTED:
     //////////////////////
